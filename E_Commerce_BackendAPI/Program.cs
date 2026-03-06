@@ -1,8 +1,7 @@
 using E_Commerce_BackendAPI.Authentication;
 using E_Commerce_BackendAPI.DAL;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer; // <-- add this
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using E_Commerce_BackendAPI.Authentication;
 using E_Commerce_BackendAPI.DAL;
+using E_Commerce_BackendAPI.Dtos;
 using E_Commerce_BackendAPI.Model;
 using E_Commerce_BackendAPI.Utilities;
 using Microsoft.AspNetCore.Http;
@@ -21,30 +22,36 @@ namespace E_Commerce_BackendAPI.Controllers
             _jwtService = jwtService;
         }
         [HttpPost("Register")]
-        public async Task<IActionResult> Register([FromBody] User user)
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var result= await _context.Users.FirstOrDefaultAsync(u=>u.Email==user.Email);
-            if(result!=null)
+            var result = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+            if (result != null)
             {
                 return BadRequest("User with this email already exists.");
             }
-            user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
-            user.Role = UserRole.Customer;
-            user.IsActive = true;
-            user.CreatedDate = DateTime.UtcNow;
+
+            var user = new User
+            {
+                Email = request.Email,
+                Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Name = request.Name,
+                Role = UserRole.Customer,
+                IsActive = true,
+                CreatedDate = DateTime.UtcNow
+            };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
             return Ok("User registered successfully");
-
-
-
         }
+
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            var user =_context.Users.FirstOrDefault(u=>u.Email==loginRequest.Email);
+            var user =await _context.Users.FirstOrDefaultAsync(u=>u.Email==loginRequest.Email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
                 return Unauthorized("Invalid credentials");
 
@@ -71,13 +78,13 @@ namespace E_Commerce_BackendAPI.Controllers
 
         public async Task<IActionResult> RefreshToken([FromBody] RefreshRequest refreshrequest)
         {
-            var existingToken = _context.RefreshTokens.FirstOrDefault(rt => rt.Token == refreshrequest.RefreshToken);
+            var existingToken =await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshrequest.RefreshToken);
             if (existingToken == null || existingToken.IsRevoked || existingToken.ExpiresAt < DateTime.UtcNow)
             {
                 return Unauthorized("Invalid or expired refresh token");
             }
 
-            var user = _context.Users.FirstOrDefault(u => u.Id == existingToken.UserId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == existingToken.UserId);
             if (user == null)
             {
                 return Unauthorized("User not found");
@@ -107,9 +114,8 @@ namespace E_Commerce_BackendAPI.Controllers
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
         {
-            var refreshTokenEntity = _context.RefreshTokens
-                .FirstOrDefault(rt => rt.Token == request.RefreshToken);
-
+            var refreshTokenEntity = await _context.RefreshTokens
+    .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
             if (refreshTokenEntity != null)
             {
                 refreshTokenEntity.IsRevoked = true;
@@ -126,17 +132,8 @@ namespace E_Commerce_BackendAPI.Controllers
     }
 
 
-    public class LoginRequest
-    {
-        public string Email { get; set; }
-        public string Password { get; set; }
-    }
-    public class RefreshRequest
-    {
-        public string RefreshToken { get; set; }
-    }
-    public class LogoutRequest
-    {
-        public string RefreshToken { get; set; }
-    }
+   
+   
+
+
 }

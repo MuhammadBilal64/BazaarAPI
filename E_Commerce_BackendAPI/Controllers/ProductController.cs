@@ -43,7 +43,26 @@ namespace E_Commerce_BackendAPI.Controllers
 
 
         }
-
+        [HttpGet("{id")]
+        public async Task<IActionResult> GetProductById(int id)
+        {
+            var product = await _context.Products.Include(u=>u.Category)
+                .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
+            if(product == null)
+            {
+                return NotFound();
+            }
+            var productDto = new ProductDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                Stock = product.Stock,
+                CategoryName = product.Category.Name
+            };
+            return Ok(productDto);
+        }
 
 
     }

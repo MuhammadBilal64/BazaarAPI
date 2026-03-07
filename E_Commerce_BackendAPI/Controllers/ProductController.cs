@@ -16,42 +16,48 @@ namespace E_Commerce_BackendAPI.Controllers
         {
             _context = context;
         }
-        [HttpGet("GetAll")]
-        public async Task<IActionResult>GetProducts(int page=1 ,int pagesize=10)
+        [HttpGet]
+        public async Task<IActionResult> GetProducts(int page = 1, int pageSize = 10)
         {
-            var query = _context.Products.Include(p => p.Category).Where(p => p.IsActive);
-            var totalproducts = await query.CountAsync();
-            var products = await query.Skip((page - 1) * pagesize).Take(pagesize).Select(p => new ProductDto
-            {
+            var query = _context.Products
+                .Include(p => p.Category)
+                .Where(p => p.IsActive);
 
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Price = p.Price,
-                Stock = p.Stock,
-                CategoryName = p.Category.Name
-            }).ToListAsync();
+            var totalProducts = await query.CountAsync();
+
+            var products = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Stock = p.Stock,
+                    CategoryName = p.Category.Name
+                })
+                .ToListAsync();
+
             return Ok(new
             {
-                TotalCount = totalproducts,
+                TotalCount = totalProducts,
                 Page = page,
-                PageSize = pagesize,
+                PageSize = pageSize,
                 Items = products
-
             });
-
-
-
         }
-        [HttpGet("{id")]
+
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetProductById(int id)
         {
-            var product = await _context.Products.Include(u=>u.Category)
-                .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
-            if(product == null)
-            {
+            var product = await _context.Products
+                .Include(p => p.Category)
+                .FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
+
+            if (product == null)
                 return NotFound();
-            }
+
             var productDto = new ProductDto
             {
                 Id = product.Id,
@@ -61,7 +67,32 @@ namespace E_Commerce_BackendAPI.Controllers
                 Stock = product.Stock,
                 CategoryName = product.Category.Name
             };
+
             return Ok(productDto);
+        }
+        [HttpGet("category/{categoryId}")]
+        public async Task<IActionResult> GetProductsByCategory(int categoryId, int page = 1, int pageSize = 10)
+        {
+            var query = _context.Products.Include(p => p.Category).Where(p => p.CategoryId == categoryId && p.IsActive);
+            var totalProducts = await query.CountAsync();
+            var products = await query.Skip(((page - 1)) * pageSize).Take(pageSize).Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                Stock = p.Stock,
+                CategoryName = p.Category.Name
+            }).ToListAsync();
+          
+            return Ok(new
+            {
+                TotalCount = totalProducts,
+                Page = page,
+                PageSize = pageSize,
+                Items = products
+            });
+
         }
 
 

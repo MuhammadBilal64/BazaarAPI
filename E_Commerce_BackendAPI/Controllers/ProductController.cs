@@ -17,12 +17,49 @@ namespace E_Commerce_BackendAPI.Controllers
             _context = context;
         }
         [HttpGet]
-        public async Task<IActionResult> GetProducts(int page = 1, int pageSize = 10)
+        public async Task<IActionResult> GetProducts(
+    int page = 1,
+    int pageSize = 10,
+    int? categoryId = null,
+    decimal? minPrice = null,
+    decimal? maxPrice = null,
+    bool? inStock = null,
+    string search = null,
+    string sortBy = null)
         {
             var query = _context.Products
                 .Include(p => p.Category)
                 .Where(p => p.IsActive);
 
+            if (categoryId.HasValue)
+                query = query.Where(p => p.CategoryId == categoryId.Value);
+
+            if (minPrice.HasValue)
+                query = query.Where(p => p.Price >= minPrice.Value);
+
+            if (maxPrice.HasValue)
+                query = query.Where(p => p.Price <= maxPrice.Value);
+
+            if (inStock.HasValue && inStock.Value)
+                query = query.Where(p => p.Stock > 0);
+
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(p =>
+                    p.Name.Contains(search) ||
+                    (p.Description != null && p.Description.Contains(search)));
+
+            // Apply optional sorting
+            switch (sortBy?.ToLower())
+            {
+                case "priceasc": query = query.OrderBy(p => p.Price); break;
+                case "pricedesc": query = query.OrderByDescending(p => p.Price); break;
+                case "nameasc": query = query.OrderBy(p => p.Name); break;
+                case "namedesc": query = query.OrderByDescending(p => p.Name); break;
+                case "newest": query = query.OrderByDescending(p => p.CreatedDate); break;
+                default: query = query.OrderBy(p => p.Id); break; // default sort
+            }
+
+         
             var totalProducts = await query.CountAsync();
 
             var products = await query
@@ -39,6 +76,7 @@ namespace E_Commerce_BackendAPI.Controllers
                 })
                 .ToListAsync();
 
+            // Response
             return Ok(new
             {
                 TotalCount = totalProducts,
@@ -47,7 +85,6 @@ namespace E_Commerce_BackendAPI.Controllers
                 Items = products
             });
         }
-
         [HttpGet("{id}")]
         public async Task<IActionResult> GetProductById(int id)
         {

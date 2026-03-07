@@ -48,7 +48,6 @@ namespace E_Commerce_BackendAPI.Controllers
                     p.Name.Contains(search) ||
                     (p.Description != null && p.Description.Contains(search)));
 
-            // Apply optional sorting
             switch (sortBy?.ToLower())
             {
                 case "priceasc": query = query.OrderBy(p => p.Price); break;
@@ -56,7 +55,7 @@ namespace E_Commerce_BackendAPI.Controllers
                 case "nameasc": query = query.OrderBy(p => p.Name); break;
                 case "namedesc": query = query.OrderByDescending(p => p.Name); break;
                 case "newest": query = query.OrderByDescending(p => p.CreatedDate); break;
-                default: query = query.OrderBy(p => p.Id); break; // default sort
+                default: query = query.OrderBy(p => p.Id); break; 
             }
 
          
@@ -76,7 +75,7 @@ namespace E_Commerce_BackendAPI.Controllers
                 })
                 .ToListAsync();
 
-            // Response
+           
             return Ok(new
             {
                 TotalCount = totalProducts,

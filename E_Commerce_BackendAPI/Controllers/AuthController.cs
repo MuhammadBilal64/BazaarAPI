@@ -1,4 +1,4 @@
-﻿using Azure.Core;
+using Azure.Core;
 using E_Commerce_BackendAPI.Authentication;
 using E_Commerce_BackendAPI.DAL;
 using E_Commerce_BackendAPI.Dtos;
@@ -16,10 +16,13 @@ namespace E_Commerce_BackendAPI.Controllers
     {
         private readonly AppDbContext _context;
         private readonly AuthService _jwtService;
-        public AuthController(AppDbContext context, AuthService jwtService)
+        private readonly ILogger<AuthController> _logger;
+
+        public AuthController(AppDbContext context, AuthService jwtService, ILogger<AuthController> logger)
         {
             _context = context;
             _jwtService = jwtService;
+            _logger = logger;
         }
         [HttpPost("Register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -45,16 +48,21 @@ namespace E_Commerce_BackendAPI.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("User registered. Email: {Email}, UserId: {UserId}", user.Email, user.Id);
             return Ok("User registered successfully");
         }
 
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            var user =await _context.Users.FirstOrDefaultAsync(u=>u.Email==loginRequest.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginRequest.Email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
+            {
+                _logger.LogWarning("Login failed for email: {Email}", loginRequest.Email);
                 return Unauthorized("Invalid credentials");
+            }
 
+            _logger.LogInformation("User logged in. UserId: {UserId}, Email: {Email}", user.Id, user.Email);
             var accessToken = _jwtService.GenerateAccessToken(user);
             var refreshToken = _jwtService.GenerateRefreshToken();
             var RefreshTokenEntity = new RefreshToken
@@ -78,9 +86,10 @@ namespace E_Commerce_BackendAPI.Controllers
 
         public async Task<IActionResult> RefreshToken([FromBody] RefreshRequest refreshrequest)
         {
-            var existingToken =await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshrequest.RefreshToken);
+            var existingToken = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshrequest.RefreshToken);
             if (existingToken == null || existingToken.IsRevoked || existingToken.ExpiresAt < DateTime.UtcNow)
             {
+                _logger.LogWarning("Refresh token rejected: invalid or expired.");
                 return Unauthorized("Invalid or expired refresh token");
             }
 

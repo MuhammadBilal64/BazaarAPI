@@ -15,10 +15,12 @@ namespace E_Commerce_BackendAPI.Controllers
     public class OrderController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<OrderController> _logger;
 
-        public OrderController(AppDbContext context)
+        public OrderController(AppDbContext context, ILogger<OrderController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         /// <summary>List current user's orders (customer). Pagination and optional status/date filters.</summary>
@@ -102,6 +104,96 @@ namespace E_Commerce_BackendAPI.Controllers
             };
 
             return Ok(detail);
+        }
+
+        /// <summary>Create order from current user's cart.</summary>
+        [HttpPost]
+        public async Task<IActionResult> CreateOrderFromCart()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            var cartItems = await _context.CartItems
+                .Include(c => c.Product)
+                .Where(c => c.UserId == userId.Value && c.Status == CartStatus.Active && c.IsActive)
+                .ToListAsync();
+            if (cartItems.Count == 0)
+                return BadRequest("Cart is empty.");
+
+            foreach (var item in cartItems)
+            {
+                if (item.Product.Stock < item.Quantity)
+                    return BadRequest($"Insufficient stock for product '{item.Product.Name}'. Available: {item.Product.Stock}, requested: {item.Quantity}.");
+            }
+
+            decimal totalAmount = 0;
+            var orderItems = new List<OrderItem>();
+            foreach (var item in cartItems)
+            {
+                var lineTotal = item.Product.Price * item.Quantity;
+                totalAmount += lineTotal;
+                orderItems.Add(new OrderItem
+                {
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.Product.Price,
+                    IsActive = true,
+                    CreatedDate = DateTime.UtcNow,
+                    CreatedBy = userId.Value
+                });
+            }
+
+            var order = new Order
+            {
+                UserId = userId.Value,
+                OrderDate = DateTime.UtcNow,
+                Status = OrderStatus.Created,
+                TotalAmount = totalAmount,
+                IsActive = true,
+                CreatedDate = DateTime.UtcNow,
+                CreatedBy = userId.Value
+            };
+            _context.Orders.Add(order);
+            await _context.SaveChangesAsync();
+
+            foreach (var oi in orderItems)
+            {
+                oi.OrderId = order.Id;
+                _context.OrderItems.Add(oi);
+            }
+            foreach (var item in cartItems)
+            {
+                item.Status = CartStatus.Ordered;
+                item.ModifiedDate = DateTime.UtcNow;
+                item.ModifiedBy = userId;
+            }
+            foreach (var item in cartItems)
+            {
+                item.Product.Stock -= item.Quantity;
+            }
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Order created. OrderId: {OrderId}, UserId: {UserId}, TotalAmount: {TotalAmount}", order.Id, userId.Value, order.TotalAmount);
+            return CreatedAtAction(nameof(GetOrderById), new { id = order.Id }, new { OrderId = order.Id, TotalAmount = order.TotalAmount, Message = "Order created." });
+        }
+
+        /// <summary>Update order status (Admin only).</summary>
+        [HttpPut("{id:int}/status")]
+        [Authorize(Roles = nameof(UserRole.Admin))]
+        public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request)
+        {
+            if (!Enum.TryParse<OrderStatus>(request.Status, true, out var newStatus))
+                return BadRequest("Invalid status. Use: Created, Paid, Shipped, Cancelled.");
+
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null)
+                return NotFound();
+            order.Status = newStatus;
+            order.ModifiedDate = DateTime.UtcNow;
+            order.ModifiedBy = GetCurrentUserId();
+            await _context.SaveChangesAsync();
+            return Ok(new { OrderId = order.Id, Status = order.Status.ToString() });
         }
 
         /// <summary>List all orders (Admin only). Pagination and optional status/date filters.</summary>

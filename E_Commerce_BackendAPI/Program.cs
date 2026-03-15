@@ -41,6 +41,12 @@ options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnectio
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await DataSeeder.SeedAsync(context);
+}
+
 // Global exception handling (must be early so it wraps the pipeline)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -57,4 +63,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();

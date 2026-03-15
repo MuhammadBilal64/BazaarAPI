@@ -196,6 +196,40 @@ namespace E_Commerce_BackendAPI.Controllers
             return Ok(new { OrderId = order.Id, Status = order.Status.ToString() });
         }
 
+        /// <summary>Simulate payment for an order (mock). On success, marks order as Paid. Replace with real gateway later.</summary>
+        [HttpPost("{id:int}/pay")]
+        public async Task<IActionResult> SimulatePayment(int id, [FromBody] SimulatePaymentRequest? request = null)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null)
+                return NotFound("Order not found.");
+
+            if (!User.IsInRole(nameof(UserRole.Admin)) && order.UserId != userId.Value)
+                return Forbid("You can only pay for your own order.");
+
+            if (order.Status != OrderStatus.Created)
+                return BadRequest($"Order cannot be paid. Current status: {order.Status}. Only orders in 'Created' status can be paid.");
+
+            bool simulateSuccess = request?.SimulateSuccess ?? true;
+
+            if (simulateSuccess)
+            {
+                order.Status = OrderStatus.Paid;
+                order.ModifiedDate = DateTime.UtcNow;
+                order.ModifiedBy = userId;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Payment simulated success. OrderId: {OrderId}, UserId: {UserId}", order.Id, userId.Value);
+                return Ok(new { Success = true, OrderId = order.Id, Status = order.Status.ToString(), Message = "Payment successful." });
+            }
+
+            _logger.LogInformation("Payment simulated failure. OrderId: {OrderId}, UserId: {UserId}", order.Id, userId.Value);
+            return Ok(new { Success = false, OrderId = order.Id, Message = "Payment failed (simulated)." });
+        }
+
         /// <summary>List all orders (Admin only). Pagination and optional status/date filters.</summary>
         [HttpGet("admin")]
         [Authorize(Roles = nameof(UserRole.Admin))]

@@ -1,6 +1,7 @@
-﻿using E_Commerce_BackendAPI.Authentication;
+using E_Commerce_BackendAPI.Authentication;
 using E_Commerce_BackendAPI.DAL;
 using E_Commerce_BackendAPI.Middleware;
+using E_Commerce_BackendAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;         
@@ -37,6 +38,11 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IAuthApplicationService, AuthApplicationService>();
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>

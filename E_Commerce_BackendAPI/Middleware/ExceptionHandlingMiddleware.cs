@@ -34,6 +34,7 @@ namespace E_Commerce_BackendAPI.Middleware
             var (statusCode, title, detail) = exception switch
             {
                 NotFoundException nf => (HttpStatusCode.NotFound, "Not Found", nf.Message),
+                ForbiddenException f => (HttpStatusCode.Forbidden, "Forbidden", f.Message),
                 UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized", exception.Message),
                 ArgumentException arg => (HttpStatusCode.BadRequest, "Bad Request", arg.Message),
                 InvalidOperationException inv => (HttpStatusCode.Conflict, "Conflict", inv.Message),

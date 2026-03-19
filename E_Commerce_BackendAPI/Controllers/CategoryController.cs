@@ -1,10 +1,8 @@
 using System.Security.Claims;
-using E_Commerce_BackendAPI.DAL;
 using E_Commerce_BackendAPI.Dtos;
-using E_Commerce_BackendAPI.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using E_Commerce_BackendAPI.Services;
 
 namespace E_Commerce_BackendAPI.Controllers
 {
@@ -12,39 +10,20 @@ namespace E_Commerce_BackendAPI.Controllers
     [ApiController]
     public class CategoryController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        public CategoryController(AppDbContext context)
+        private readonly ICategoryService _categoryService;
+        public CategoryController(ICategoryService categoryService)
         {
-            _context = context;
+            _categoryService = categoryService;
         }
         [HttpGet]
         public async Task<IActionResult> GetCategories()
         {
-            var categories = await _context.Categories
-                .Where(c => c.IsActive)
-                .Select(c => new CategoryDto
-                {
-                    Id = c.Id,
-                    Name = c.Name
-                })
-                .ToListAsync();
-
-            return Ok(categories);
+            return Ok(await _categoryService.GetActiveCategoriesAsync());
         }
         [HttpGet("{id}")]
         public async Task<IActionResult>GetCategoryById(int id)
         {
-            var category =await _context.Categories.Where(c => c.Id == id && c.IsActive)
-                .Select(c => new CategoryDto
-                {
-                    Id = c.Id,
-                    Name = c.Name
-                })
-                .FirstOrDefaultAsync();
-
-            if(category == null)
-                return NotFound();
-            return Ok(category);
+            return Ok(await _categoryService.GetCategoryByIdAsync(id));
         }
 
         /// <summary>Create category (Admin only).</summary>
@@ -53,17 +32,8 @@ namespace E_Commerce_BackendAPI.Controllers
         public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryDto dto)
         {
             var userId = GetCurrentUserId();
-            var category = new Category
-            {
-                Name = dto.Name,
-                Description = dto.Description ?? "",
-                IsActive = true,
-                CreatedDate = DateTime.UtcNow,
-                CreatedBy = userId ?? 0
-            };
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetCategoryById), new { id = category.Id }, new CategoryDto { Id = category.Id, Name = category.Name });
+            var category = await _categoryService.CreateCategoryAsync(dto, userId);
+            return CreatedAtAction(nameof(GetCategoryById), new { id = category.Id }, category);
         }
 
         /// <summary>Update category (Admin only).</summary>
@@ -71,16 +41,8 @@ namespace E_Commerce_BackendAPI.Controllers
         [Authorize(Roles = nameof(Utilities.UserRole.Admin))]
         public async Task<IActionResult> UpdateCategory(int id, [FromBody] UpdateCategoryDto dto)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-                return NotFound();
             var userId = GetCurrentUserId();
-            category.Name = dto.Name;
-            category.Description = dto.Description ?? "";
-            category.ModifiedDate = DateTime.UtcNow;
-            category.ModifiedBy = userId;
-            await _context.SaveChangesAsync();
-            return Ok(new CategoryDto { Id = category.Id, Name = category.Name });
+            return Ok(await _categoryService.UpdateCategoryAsync(id, dto, userId));
         }
 
         /// <summary>Soft-delete category (Admin only).</summary>
@@ -88,13 +50,7 @@ namespace E_Commerce_BackendAPI.Controllers
         [Authorize(Roles = nameof(Utilities.UserRole.Admin))]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-                return NotFound();
-            category.IsActive = false;
-            category.ModifiedDate = DateTime.UtcNow;
-            category.ModifiedBy = GetCurrentUserId();
-            await _context.SaveChangesAsync();
+            await _categoryService.DeleteCategoryAsync(id, GetCurrentUserId());
             return NoContent();
         }
 

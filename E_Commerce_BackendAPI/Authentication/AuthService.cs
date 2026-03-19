@@ -8,18 +8,24 @@ namespace E_Commerce_BackendAPI.Authentication
 {
     public class AuthService
     {
-        private readonly IConfiguration _config;
+        private readonly string secretKey;
+        private readonly string issuer;
+        private readonly string audience;
+        private readonly int expirationMinutes;
+
         public AuthService(IConfiguration config)
         {
-            _config = config;
+            var jwtSettings = config.GetSection("JwtSettings");
+             secretKey = jwtSettings["SecretKey"]!;
+             issuer = jwtSettings["Issuer"]!;
+             audience = jwtSettings["Audience"]!;
+             expirationMinutes = int.Parse(jwtSettings["AccessTokenExpirationMinutes"]);
+
         }
         public string GenerateAccessToken(User user)
         {
-            var jwtSettings =_config.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"];
-            var issuer = jwtSettings["Issuer"];
-            var audience = jwtSettings["Audience"];
-            var expirationMinutes = int.Parse(jwtSettings["AccessTokenExpirationMinutes"]);
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
@@ -27,8 +33,7 @@ namespace E_Commerce_BackendAPI.Authentication
                 new Claim (ClaimTypes.Role,user.Role.ToString()),
                 new Claim (JwtRegisteredClaimNames.Jti,Guid.NewGuid().ToString())
             };
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+          
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
@@ -42,7 +47,9 @@ namespace E_Commerce_BackendAPI.Authentication
         }
         public string GenerateRefreshToken()
         {
-            return Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+            var bytes = new byte[64];
+            System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+            return Convert.ToBase64String(bytes);
         }
 
     }

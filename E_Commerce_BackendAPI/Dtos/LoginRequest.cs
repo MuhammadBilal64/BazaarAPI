@@ -1,8 +1,15 @@
-﻿namespace E_Commerce_BackendAPI.Dtos
+using System.ComponentModel.DataAnnotations;
+
+namespace E_Commerce_BackendAPI.Dtos
 {
     public class LoginRequest
     {
-        public string Email { get; set; }
-        public string Password { get; set; }
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string Password { get; set; } = string.Empty;
     }
 }

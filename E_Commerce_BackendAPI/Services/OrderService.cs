@@ -104,56 +104,73 @@ namespace E_Commerce_BackendAPI.Services
                         $"Insufficient stock for product '{item.Product.Name}'. Available: {item.Product.Stock}, requested: {item.Quantity}.");
             }
 
-            decimal totalAmount = 0;
-            var orderItems = new List<OrderItem>();
-            foreach (var item in cartItems)
+            Order? order = null;
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var lineTotal = item.Product.Price * item.Quantity;
-                totalAmount += lineTotal;
-                orderItems.Add(new OrderItem
+                decimal totalAmount = 0;
+                var orderItems = new List<OrderItem>();
+
+                order = new Order
                 {
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity,
-                    UnitPrice = item.Product.Price,
+                    UserId = userId,
+                    OrderDate = DateTime.UtcNow,
+                    Status = OrderStatus.Created,
                     IsActive = true,
                     CreatedDate = DateTime.UtcNow,
                     CreatedBy = userId
-                });
+                };
+
+                foreach (var item in cartItems)
+                {
+                    var lineTotal = item.Product.Price * item.Quantity;
+                    totalAmount += lineTotal;
+
+                    orderItems.Add(new OrderItem
+                    {
+                        ProductId = item.ProductId,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.Product.Price,
+                        IsActive = true,
+                        CreatedDate = DateTime.UtcNow,
+                        CreatedBy = userId,
+
+                        // Important: link the OrderItem to the Order so EF can insert
+                        // both in one SaveChanges() call (no "missing items" on crash).
+                        Order = order
+                    });
+                }
+
+                order.TotalAmount = totalAmount;
+                order.OrderItems = orderItems;
+
+                _context.Orders.Add(order);
+
+                foreach (var item in cartItems)
+                {
+                    item.Status = CartStatus.Ordered;
+                    item.ModifiedDate = DateTime.UtcNow;
+                    item.ModifiedBy = userId;
+                }
+
+                // Decrease stock for the successful order creation.
+                foreach (var item in cartItems)
+                {
+                    item.Product.Stock -= item.Quantity;
+                }
+
+                // One SaveChanges() ensures either everything commits or nothing does.
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
             }
 
-            var order = new Order
-            {
-                UserId = userId,
-                OrderDate = DateTime.UtcNow,
-                Status = OrderStatus.Created,
-                TotalAmount = totalAmount,
-                IsActive = true,
-                CreatedDate = DateTime.UtcNow,
-                CreatedBy = userId
-            };
-
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-            foreach (var oi in orderItems)
-            {
-                oi.OrderId = order.Id;
-                _context.OrderItems.Add(oi);
-            }
-
-            foreach (var item in cartItems)
-            {
-                item.Status = CartStatus.Ordered;
-                item.ModifiedDate = DateTime.UtcNow;
-                item.ModifiedBy = userId;
-            }
-
-            foreach (var item in cartItems)
-            {
-                item.Product.Stock -= item.Quantity;
-            }
-
-            await _context.SaveChangesAsync();
+            if (order == null)
+                throw new InvalidOperationException("Order creation failed unexpectedly.");
 
             _logger.LogInformation(
                 "Order created. OrderId: {OrderId}, UserId: {UserId}, TotalAmount: {TotalAmount}",

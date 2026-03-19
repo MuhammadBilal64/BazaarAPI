@@ -1,9 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Azure.Core;
 using E_Commerce_BackendAPI.Authentication;
 using E_Commerce_BackendAPI.DAL;
 using E_Commerce_BackendAPI.Dtos;
 using E_Commerce_BackendAPI.Model;
 using E_Commerce_BackendAPI.Utilities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -56,7 +59,7 @@ namespace E_Commerce_BackendAPI.Controllers
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginRequest.Email);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
+            if (user == null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
             {
                 _logger.LogWarning("Login failed for email: {Email}", loginRequest.Email);
                 return Unauthorized("Invalid credentials");
@@ -121,10 +124,17 @@ namespace E_Commerce_BackendAPI.Controllers
             });
         }
         [HttpPost("Logout")]
+        [Authorize]
         public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
         {
+            var userIdClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null) return Unauthorized();
+
+            var userId = int.Parse(userIdClaim);
+
             var refreshTokenEntity = await _context.RefreshTokens
-    .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+                .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && rt.UserId == userId);
+
             if (refreshTokenEntity != null)
             {
                 refreshTokenEntity.IsRevoked = true;

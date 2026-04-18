@@ -3,6 +3,7 @@ using E_Commerce_BackendAPI.Dtos;
 using E_Commerce_BackendAPI.Utilities;
 using E_Commerce_BackendAPI.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace E_Commerce_BackendAPI.Controllers
@@ -21,6 +22,8 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>List current user's orders (customer). Pagination and optional status/date filters.</summary>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMyOrders(
             int page = 1,
             int pageSize = 10,
@@ -36,6 +39,10 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>Get order by id. Customers can only view their own orders.</summary>
         [HttpGet("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetOrderById(int id)
         {
             var userId = GetCurrentUserId();
@@ -48,6 +55,9 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>Create order from current user's cart.</summary>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> CreateOrderFromCart()
         {
             var userId = GetCurrentUserId();
@@ -60,6 +70,11 @@ namespace E_Commerce_BackendAPI.Controllers
         /// <summary>Update order status (Admin only).</summary>
         [HttpPut("{id:int}/status")]
         [Authorize(Roles = nameof(UserRole.Admin))]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request)
         {
             var modifiedBy = GetCurrentUserId();
@@ -69,6 +84,10 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>Simulate payment for an order (mock). On success, marks order as Paid. Replace with real gateway later.</summary>
         [HttpPost("{id:int}/pay")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> SimulatePayment(int id, [FromBody] SimulatePaymentRequest? request = null)
         {
             var userId = GetCurrentUserId();
@@ -88,6 +107,9 @@ namespace E_Commerce_BackendAPI.Controllers
         /// <summary>List all orders (Admin only). Pagination and optional status/date filters.</summary>
         [HttpGet("admin")]
         [Authorize(Roles = nameof(UserRole.Admin))]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAllOrders(
             int page = 1,
             int pageSize = 10,

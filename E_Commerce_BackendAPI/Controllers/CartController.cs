@@ -3,6 +3,7 @@ using E_Commerce_BackendAPI.Dtos;
 using E_Commerce_BackendAPI.Utilities;
 using E_Commerce_BackendAPI.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace E_Commerce_BackendAPI.Controllers
@@ -21,6 +22,8 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>Get current user's active cart items.</summary>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetCart()
         {
             var userId = GetCurrentUserId();
@@ -32,6 +35,10 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>Add product to cart or update quantity if already in cart.</summary>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> AddToCart([FromBody] AddToCartRequest request)
         {
             var userId = GetCurrentUserId();
@@ -44,6 +51,10 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>Update cart item quantity.</summary>
         [HttpPut("{itemId:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateCartItem(int itemId, [FromBody] UpdateCartItemRequest request)
         {
             var userId = GetCurrentUserId();
@@ -56,6 +67,9 @@ namespace E_Commerce_BackendAPI.Controllers
 
         /// <summary>Remove item from cart (soft delete: sets IsActive = false).</summary>
         [HttpDelete("{itemId:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RemoveFromCart(int itemId)
         {
             var userId = GetCurrentUserId();

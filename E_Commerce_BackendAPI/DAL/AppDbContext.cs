@@ -15,6 +15,7 @@ namespace E_Commerce_BackendAPI.DAL
      public   DbSet<OrderItem> OrderItems { get; set; }
       public  DbSet<CartItem> CartItems { get; set; }
        public  DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<IdempotencyRecord>IdempotencyRecords { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -51,8 +52,15 @@ namespace E_Commerce_BackendAPI.DAL
             modelBuilder.Entity<OrderItem>()
                 .Property(oi => oi.UnitPrice)
                 .HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<IdempotencyRecord>(entity =>
+            {
+                entity.HasIndex(e => e.IdempotencyKey).IsUnique();
+                entity.HasIndex(e => e.ExpiresAt);
+            });
+
+
         }
-       
+
 
 
     }

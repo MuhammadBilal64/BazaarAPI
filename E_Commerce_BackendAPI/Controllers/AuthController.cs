@@ -19,6 +19,8 @@ namespace E_Commerce_BackendAPI.Controllers
             _authService = authService;
         }
         [HttpPost("Register")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             await _authService.RegisterAsync(request);
@@ -26,6 +28,9 @@ namespace E_Commerce_BackendAPI.Controllers
         }
 
         [HttpPost("Login")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
             var tokens = await _authService.LoginAsync(loginRequest);
@@ -36,6 +41,9 @@ namespace E_Commerce_BackendAPI.Controllers
             });
         }
         [HttpPost("Refresh")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshRequest refreshrequest)
         {
             var tokens = await _authService.RefreshTokenAsync(refreshrequest.RefreshToken);
@@ -48,6 +56,9 @@ namespace E_Commerce_BackendAPI.Controllers
         }
         [HttpPost("Logout")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
         {
             var userIdClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub);

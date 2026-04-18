@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local launch profile can contain machine-specific secrets
+E_Commerce_BackendAPI/Properties/launchSettings.json

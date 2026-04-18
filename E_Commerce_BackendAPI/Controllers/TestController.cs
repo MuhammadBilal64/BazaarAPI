@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace E_Commerce_BackendAPI.Controllers
 {
@@ -7,6 +8,7 @@ namespace E_Commerce_BackendAPI.Controllers
     public class TestController : ControllerBase
     {
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult Get() => Ok(new { message = "Swagger is working!" });
     }
 }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using E_Commerce_BackendAPI.Dtos;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using E_Commerce_BackendAPI.Services;
 
@@ -17,6 +18,7 @@ namespace E_Commerce_BackendAPI.Controllers
             _productService = productService;
         }
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetProducts(
     int page = 1,
     int pageSize = 10,
@@ -38,11 +40,14 @@ namespace E_Commerce_BackendAPI.Controllers
                 sortBy));
         }
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetProductById(int id)
         {
             return Ok(await _productService.GetProductByIdAsync(id));
         }
         [HttpGet("category/{categoryId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetProductsByCategory(int categoryId, int page = 1, int pageSize = 10)
         {
             return Ok(await _productService.GetProductsByCategoryAsync(categoryId, page, pageSize));
@@ -52,6 +57,10 @@ namespace E_Commerce_BackendAPI.Controllers
         /// <summary>Create product (Admin only).</summary>
         [HttpPost]
         [Authorize(Roles = nameof(Utilities.UserRole.Admin))]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> CreateProduct([FromBody] CreateProductDto dto)
         {
             var userId = GetCurrentUserId();
@@ -62,6 +71,11 @@ namespace E_Commerce_BackendAPI.Controllers
         /// <summary>Update product (Admin only).</summary>
         [HttpPut("{id:int}")]
         [Authorize(Roles = nameof(Utilities.UserRole.Admin))]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto dto)
         {
             var userId = GetCurrentUserId();
@@ -71,6 +85,10 @@ namespace E_Commerce_BackendAPI.Controllers
         /// <summary>Soft-delete product (Admin only).</summary>
         [HttpDelete("{id:int}")]
         [Authorize(Roles = nameof(Utilities.UserRole.Admin))]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             await _productService.DeleteProductAsync(id, GetCurrentUserId());

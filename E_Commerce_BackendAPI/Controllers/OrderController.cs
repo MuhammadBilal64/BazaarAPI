@@ -19,6 +19,15 @@ namespace E_Commerce_BackendAPI.Controllers
         {
             _orderService = orderService;
         }
+        private string? GetIdempotencyKey()
+        {
+            if (Request.Headers.TryGetValue("Idempotency-Key", out var key))
+            {
+                return key.ToString();
+            }
+            return null;
+        }
+  
 
         /// <summary>List current user's orders (customer). Pagination and optional status/date filters.</summary>
         [HttpGet]
@@ -58,12 +67,16 @@ namespace E_Commerce_BackendAPI.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> CreateOrderFromCart()
         {
             var userId = GetCurrentUserId();
             if (userId == null)
                 return Unauthorized();
-            var result = await _orderService.CreateOrderFromCartAsync(userId.Value);
+
+            var idempotencyKey = GetIdempotencyKey();
+
+            var result = await _orderService.CreateOrderFromCartAsync(userId.Value, idempotencyKey);
             return CreatedAtAction(nameof(GetOrderById), new { id = result.OrderId }, new { result.OrderId, result.TotalAmount, result.Message });
         }
 

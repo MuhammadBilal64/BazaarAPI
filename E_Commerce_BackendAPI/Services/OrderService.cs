@@ -4,18 +4,20 @@ using E_Commerce_BackendAPI.Exceptions;
 using E_Commerce_BackendAPI.Model;
 using E_Commerce_BackendAPI.Utilities;
 using Microsoft.EntityFrameworkCore;
-
+using System.Text.Json;
 namespace E_Commerce_BackendAPI.Services
 {
     public class OrderService : IOrderService
     {
         private readonly AppDbContext _context;
         private readonly ILogger<OrderService> _logger;
+        private readonly IIdempotencyService _idempotencyService;
 
-        public OrderService(AppDbContext context, ILogger<OrderService> logger)
+        public OrderService(AppDbContext context, ILogger<OrderService> logger, IIdempotencyService idempotencyService)
         {
             _context = context;
             _logger = logger;
+            _idempotencyService = idempotencyService;
         }
 
         public async Task<PaginationResponseDto<OrderListDto>> GetMyOrdersAsync(
@@ -87,8 +89,17 @@ namespace E_Commerce_BackendAPI.Services
             };
         }
 
-        public async Task<OrderCreateResponseDto> CreateOrderFromCartAsync(int userId)
+        public async Task<OrderCreateResponseDto> CreateOrderFromCartAsync(int userId,string idempotencyKey)
         {
+
+            // Idempotency check
+            if(!string.IsNullOrWhiteSpace(idempotencyKey))
+            {
+                var existingRecord = await _idempotencyService.GetExistingRecordAsync(idempotencyKey);
+               
+            }
+
+
             var cartItems = await _context.CartItems
                 .Include(c => c.Product)
                 .Where(c => c.UserId == userId && c.Status == CartStatus.Active && c.IsActive)
@@ -103,7 +114,8 @@ namespace E_Commerce_BackendAPI.Services
                     throw new ArgumentException(
                         $"Insufficient stock for product '{item.Product.Name}'. Available: {item.Product.Stock}, requested: {item.Quantity}.");
             }
-
+            
+            // Check idempoten
             Order? order = null;
             await using var tx = await _context.Database.BeginTransactionAsync();
             try

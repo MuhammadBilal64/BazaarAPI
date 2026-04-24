@@ -14,7 +14,7 @@ namespace E_Commerce_BackendAPI.Services
             DateTime? toDate);
 
         Task<OrderDetailDto> GetOrderByIdAsync(int id, int userId, bool isAdmin);
-        Task<OrderCreateResponseDto> CreateOrderFromCartAsync(int userId);
+        Task<OrderCreateResponseDto> CreateOrderFromCartAsync(int userId, string idempotencyKey);
         Task<OrderStatus> UpdateOrderStatusAsync(int id, string status, int? modifiedBy);
         Task<PaymentSimulationResultDto> SimulatePaymentAsync(int id, int userId, bool isAdmin, bool simulateSuccess);
         Task<PaginationResponseDto<OrderListDto>> GetAllOrdersAsync(
